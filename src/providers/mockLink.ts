@@ -1,60 +1,44 @@
-import type { TRPCLink } from "@trpc/client";
-import { TRPCClientError } from "@trpc/client";
-import { observable } from "@trpc/server/observable";
+import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import type { AppRouter } from "../../api/router";
 import { getMockResponse } from "@/lib/mockData";
 
-export const mockFallbackLink: TRPCLink<AppRouter> = () => {
-  return ({ op }) => {
-    return observable((observer) => {
-      const url = `/api/trpc/${op.path}`;
-      const body = JSON.stringify({
-        [op.path]: { json: op.input },
-      });
+export function createMockFallbackLink() {
+  return httpBatchLink<AppRouter>({
+    url: "/api/trpc",
+    transformer: superjson,
+    headers() {
+      return { "content-type": "application/json" };
+    },
+    // Custom fetch that always returns mock data (no real API call)
+    fetch: async (_url, options) => {
+      const body = options?.body;
+      if (!body || typeof body !== "string") {
+        return new Response("[]", { status: 200, headers: { "content-type": "application/json" } });
+      }
 
-      let cancelled = false;
+      try {
+        const requests = JSON.parse(body);
+        const responses: any[] = [];
 
-      fetch(url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body,
-        credentials: "include",
-      })
-        .then(async (res) => {
-          if (cancelled) return;
-          if (!res.ok) {
-            const mockResult = getMockResponse(op.path, op.input);
-            if (mockResult !== undefined) {
-              observer.next({ result: { type: "data" as const, data: mockResult } });
-              observer.complete();
-              return;
-            }
-            throw new Error(`API error ${res.status}`);
-          }
-          const json = await res.json();
-          const result = json[0]?.result;
-          if (result?.data) {
-            observer.next({ result: { type: "data" as const, data: superjson.deserialize(result.data) } });
-          } else {
-            observer.next({ result: { type: "data" as const, data: result } });
-          }
-          observer.complete();
-        })
-        .catch(() => {
-          if (cancelled) return;
-          const mockResult = getMockResponse(op.path, op.input);
-          if (mockResult !== undefined) {
-            observer.next({ result: { type: "data" as const, data: mockResult } });
-            observer.complete();
-          } else {
-            observer.error(new TRPCClientError(`No mock data for ${op.path}`));
-          }
+        for (const [key, value] of Object.entries(requests)) {
+          const path = key as string;
+          const input = (value as any)?.json;
+          const mockData = getMockResponse(path, input);
+          responses.push({
+            result: {
+              data: superjson.serialize(mockData),
+            },
+          });
+        }
+
+        return new Response(JSON.stringify(responses), {
+          status: 200,
+          headers: { "content-type": "application/json" },
         });
-
-      return () => {
-        cancelled = true;
-      };
-    });
-  };
+      } catch {
+        return new Response("[]", { status: 200, headers: { "content-type": "application/json" } });
+      }
+    },
+  });
 }

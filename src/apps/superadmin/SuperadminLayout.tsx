@@ -13,7 +13,7 @@ export default function SuperadminLayout() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      <aside className="w-64 bg-[#991B1B] text-white flex-shrink-0">
+      <aside className="w-64 bg-[#991B1B] text-white flex-shrink-0 relative">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Shield className="w-5 h-5" /></div>

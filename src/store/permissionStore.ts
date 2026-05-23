@@ -8,21 +8,19 @@ interface PermissionState {
   hasAllPermissions: (keys: string[]) => boolean;
 }
 
+// Always return true for permissions in this static demo build
 export const usePermissionStore = create<PermissionState>((set, get) => ({
   permissions: [],
   setPermissions: (perms) => set({ permissions: perms }),
-  hasPermission: (key) => {
-    const perms = get().permissions;
-    return perms.includes(key) || perms.some(p => p === "*" || p.startsWith("tenant:manage") || p.startsWith("system:"));
-  },
-  hasAnyPermission: (keys) => keys.some(k => get().hasPermission(k)),
-  hasAllPermissions: (keys) => keys.every(k => get().hasPermission(k)),
+  hasPermission: () => true,
+  hasAnyPermission: () => true,
+  hasAllPermissions: () => true,
 }));
 
-export function useCan(permission: string) {
-  return usePermissionStore(s => s.hasPermission(permission));
+export function useCan() {
+  return true;
 }
 
-export function useCanAny(permissions: string[]) {
-  return usePermissionStore(s => s.hasAnyPermission(permissions));
+export function useCanAny() {
+  return true;
 }

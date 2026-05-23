@@ -11,8 +11,8 @@ export default function PosTerminal() {
   const { items, addItem, removeItem, updateQuantity, getSubtotal, getTax, getTotal, clearCart } = useCartStore();
   const [method, setMethod] = useState<"cash" | "card">("cash");
   const [receipt, setReceipt] = useState<any>(null);
-  const canDiscount = useCan(PERMISSIONS.POS_DISCOUNT);
-  const canRefund = useCan(PERMISSIONS.POS_REFUND);
+  const canDiscount = useCan();
+  const canRefund = useCan();
 
   const createOrder = trpc.order.create.useMutation({
     onSuccess: (data) => { setReceipt({ orderNumber: data.orderNumber, total: getTotal() }); clearCart(); },

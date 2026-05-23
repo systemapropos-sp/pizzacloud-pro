@@ -6,7 +6,7 @@ import { CreditCard, CheckCircle } from "lucide-react";
 export default function PosOrders() {
   const { data: orders, isLoading } = trpc.order.list.useQuery({});
   const utils = trpc.useUtils();
-  const canPay = useCan(PERMISSIONS.POS_SELL);
+  const canPay = useCan();
   const updatePayment = trpc.order.updatePayment.useMutation({ onSuccess: () => utils.order.list.invalidate() });
 
   if (isLoading) return <div className="p-8 text-center text-gray-400">Loading orders...</div>;

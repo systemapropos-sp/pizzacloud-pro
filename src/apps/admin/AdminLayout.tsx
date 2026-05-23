@@ -1,24 +1,22 @@
 import { Outlet, useNavigate, useLocation } from "react-router";
-import { useCanAny } from "@/store/permissionStore";
-import { PERMISSIONS } from "@contracts/constants";
 import { LayoutDashboard, ClipboardList, Utensils, Package, Users, Armchair, LogOut } from "lucide-react";
+
+const navItems = [
+  { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/admin/orders", label: "Orders", icon: ClipboardList },
+  { path: "/admin/menu", label: "Menu", icon: Utensils },
+  { path: "/admin/inventory", label: "Inventory", icon: Package },
+  { path: "/admin/staff", label: "Staff", icon: Users },
+  { path: "/admin/tables", label: "Tables", icon: Armchair },
+];
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const navItems = [
-    { path: "/admin", label: "Dashboard", icon: LayoutDashboard, perm: PERMISSIONS.ADMIN_DASHBOARD },
-    { path: "/admin/orders", label: "Orders", icon: ClipboardList, perm: PERMISSIONS.ORDERS_VIEW },
-    { path: "/admin/menu", label: "Menu", icon: Utensils, perm: PERMISSIONS.MENU_VIEW },
-    { path: "/admin/inventory", label: "Inventory", icon: Package, perm: PERMISSIONS.INVENTORY_VIEW },
-    { path: "/admin/staff", label: "Staff", icon: Users, perm: PERMISSIONS.STAFF_VIEW },
-    { path: "/admin/tables", label: "Tables", icon: Armchair, perm: PERMISSIONS.ORDERS_VIEW },
-  ].filter(item => useCanAny([item.perm]));
-
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      <aside className="w-64 bg-[#166534] text-white flex-shrink-0">
+      <aside className="w-64 bg-[#166534] text-white flex-shrink-0 relative">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center"><Utensils className="w-5 h-5" /></div>
