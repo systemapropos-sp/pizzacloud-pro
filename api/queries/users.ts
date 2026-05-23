@@ -15,22 +15,20 @@ export async function findUserByUnionId(unionId: string) {
 
 export async function upsertUser(data: InsertUser) {
   const values = { ...data };
+  if (values.role === undefined && values.unionId && values.unionId === env.ownerUnionId) {
+    values.role = "admin";
+  }
+
   const updateSet: Partial<InsertUser> = {
     lastSignInAt: new Date(),
     ...data,
   };
 
-  if (
-    values.role === undefined &&
-    values.unionId &&
-    values.unionId === env.ownerUnionId
-  ) {
-    values.role = "admin";
-    updateSet.role = "admin";
-  }
-
   await getDb()
     .insert(schema.users)
     .values(values)
-    .onDuplicateKeyUpdate({ set: updateSet });
+    .onConflictDoUpdate({
+      target: schema.users.unionId,
+      set: updateSet,
+    });
 }
