@@ -1,39 +1,27 @@
 import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
-import { getDb } from "./queries/connection";
-import { categories, menuItems } from "@db/schema";
-import { eq, and, asc } from "drizzle-orm";
-
-const TENANT_ID = 1;
+import { CATEGORIES, MENU_ITEMS } from "./mock-data";
 
 export const menuRouter = createRouter({
   categories: publicQuery.query(async () => {
-    const db = getDb();
-    return db.select().from(categories)
-      .where(and(eq(categories.tenantId, TENANT_ID), eq(categories.isActive, true)))
-      .orderBy(asc(categories.sortOrder));
+    return CATEGORIES.filter(c => c.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
   }),
 
   items: publicQuery
     .input(z.object({ categoryId: z.number().optional() }).optional())
     .query(async ({ input }) => {
-      const db = getDb();
-      const conds = [eq(menuItems.tenantId, TENANT_ID), eq(menuItems.isAvailable, true)];
-      if (input?.categoryId) conds.push(eq(menuItems.categoryId, input.categoryId));
-      return db.select().from(menuItems).where(and(...conds)).orderBy(asc(menuItems.name));
+      let items = MENU_ITEMS.filter(i => i.isAvailable);
+      if (input?.categoryId) items = items.filter(i => i.categoryId === input.categoryId);
+      return items.sort((a, b) => a.name.localeCompare(b.name));
     }),
 
   itemById: publicQuery
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      const db = getDb();
-      const r = await db.select().from(menuItems).where(eq(menuItems.id, input.id));
-      return r[0] ?? null;
+      return MENU_ITEMS.find(i => i.id === input.id) ?? null;
     }),
 
   popular: publicQuery.query(async () => {
-    const db = getDb();
-    return db.select().from(menuItems)
-      .where(and(eq(menuItems.tenantId, TENANT_ID), eq(menuItems.isAvailable, true), eq(menuItems.isPopular, true)));
+    return MENU_ITEMS.filter(i => i.isAvailable && i.isPopular);
   }),
 });

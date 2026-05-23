@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 export default function TenantPage() {
   const { data: menuItems } = trpc.menu.items.useQuery({});
   const { data: staff } = trpc.staff.list.useQuery({});
-  const { data: tables } = trpc.table.list.useQuery({});
+  const { data: tables } = trpc.table.list.useQuery();
 
   const tenant = { name: "Napoli Pizza", slug: "napoli-pizza", address: "789 Little Italy, New York, NY 10013", phone: "(212) 555-0199", email: "hello@napolipizza.com", timezone: "America/New_York", currency: "USD", status: "active", plan: "professional", taxRate: "8.875" };
 

@@ -1,30 +1,25 @@
 import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
-import { getDb } from "./queries/connection";
-import { orders, orderItems } from "@db/schema";
-import { eq, and, desc, gte } from "drizzle-orm";
+import { ORDERS, ORDER_ITEMS, MENU_ITEMS } from "./mock-data";
 
-const TENANT_ID = 1;
+let nextOrderId = 100;
 
 export const orderRouter = createRouter({
   list: publicQuery
-    .input(z.object({ status: z.string().optional(), dateFrom: z.string().optional() }).optional())
+    .input(z.object({ status: z.string().optional() }).optional())
     .query(async ({ input }) => {
-      const db = getDb();
-      const conds = [eq(orders.tenantId, TENANT_ID)];
-      if (input?.status) conds.push(eq(orders.status, input.status as any));
-      if (input?.dateFrom) conds.push(gte(orders.createdAt, new Date(input.dateFrom)));
-      return db.select().from(orders).where(and(...conds)).orderBy(desc(orders.createdAt));
+      let orders = [...ORDERS];
+      if (input?.status) orders = orders.filter(o => o.status === input.status);
+      return orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }),
 
   byId: publicQuery
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      const db = getDb();
-      const o = await db.select().from(orders).where(eq(orders.id, input.id));
-      if (!o[0]) return null;
-      const items = await db.select().from(orderItems).where(eq(orderItems.orderId, input.id));
-      return { ...o[0], items };
+      const order = ORDERS.find(o => o.id === input.id);
+      if (!order) return null;
+      const items = ORDER_ITEMS.filter(i => i.orderId === input.id);
+      return { ...order, items };
     }),
 
   create: publicQuery
@@ -52,38 +47,46 @@ export const orderRouter = createRouter({
       })),
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
       const orderNumber = `PZ-${Date.now().toString(36).toUpperCase()}`;
-      const result = await db.insert(orders).values({
-        tenantId: TENANT_ID,
+      const orderId = ++nextOrderId;
+      ORDERS.push({
+        id: orderId,
+        tenantId: 1,
         orderNumber,
-        customerName: input.customerName,
-        customerPhone: input.customerPhone,
+        customerName: input.customerName ?? null,
+        customerPhone: input.customerPhone ?? null,
         orderType: input.orderType,
-        tableNumber: input.tableNumber,
-        notes: input.notes,
-        source: input.source,
-        subtotal: input.subtotal,
-        tax: input.tax,
-        total: input.total,
+        tableNumber: input.tableNumber ?? null,
+        notes: input.notes ?? null,
         status: "pending",
         paymentStatus: "pending",
-      }).returning({ id: orders.id });
-      const orderId = result[0].id;
+        paymentMethod: null,
+        subtotal: input.subtotal,
+        tax: input.tax,
+        tip: "0.00",
+        discount: "0.00",
+        total: input.total,
+        source: input.source,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        completedAt: null,
+      });
       for (const item of input.items) {
-        await db.insert(orderItems).values({
+        ORDER_ITEMS.push({
+          id: ORDER_ITEMS.length + 100,
           orderId,
           menuItemId: item.menuItemId,
           name: item.name,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
-          selectedSize: item.selectedSize,
-          selectedCrust: item.selectedCrust,
-          selectedToppings: item.selectedToppings,
-          selectedExtras: item.selectedExtras,
-          specialInstructions: item.specialInstructions,
+          selectedSize: item.selectedSize ?? null,
+          selectedCrust: item.selectedCrust ?? null,
+          selectedToppings: item.selectedToppings ?? [],
+          selectedExtras: item.selectedExtras ?? [],
+          specialInstructions: item.specialInstructions ?? null,
           status: "pending",
+          createdAt: new Date(),
         });
       }
       return { orderId, orderNumber };
@@ -92,24 +95,20 @@ export const orderRouter = createRouter({
   updateStatus: publicQuery
     .input(z.object({ id: z.number(), status: z.enum(["pending", "confirmed", "preparing", "baking", "ready", "delivered", "completed", "cancelled"]) }))
     .mutation(async ({ input }) => {
-      const db = getDb();
-      await db.update(orders).set({ status: input.status, updatedAt: new Date() }).where(eq(orders.id, input.id));
+      const order = ORDERS.find(o => o.id === input.id);
+      if (order) { order.status = input.status; order.updatedAt = new Date(); if (input.status === "completed") order.completedAt = new Date(); }
       return { success: true };
     }),
 
   updatePayment: publicQuery
     .input(z.object({ id: z.number(), paymentStatus: z.enum(["pending", "paid", "refunded", "failed"]), paymentMethod: z.enum(["cash", "card", "mobile", "online"]).optional() }))
     .mutation(async ({ input }) => {
-      const db = getDb();
-      const update: any = { paymentStatus: input.paymentStatus, updatedAt: new Date() };
-      if (input.paymentMethod) update.paymentMethod = input.paymentMethod;
-      await db.update(orders).set(update).where(eq(orders.id, input.id));
+      const order = ORDERS.find(o => o.id === input.id);
+      if (order) { order.paymentStatus = input.paymentStatus; if (input.paymentMethod) order.paymentMethod = input.paymentMethod; order.updatedAt = new Date(); }
       return { success: true };
     }),
 
   today: publicQuery.query(async () => {
-    const db = getDb();
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    return db.select().from(orders).where(and(eq(orders.tenantId, TENANT_ID), gte(orders.createdAt, today))).orderBy(desc(orders.createdAt));
+    return ORDERS.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }),
 });

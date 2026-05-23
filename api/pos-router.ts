@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
-import { getDb } from "./queries/connection";
-import { orders } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { ORDERS } from "./mock-data";
 
 export const posRouter = createRouter({
   quickPay: publicQuery
@@ -12,14 +10,14 @@ export const posRouter = createRouter({
       amount: z.string(),
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
-      await db.update(orders).set({
-        paymentStatus: "paid",
-        paymentMethod: input.paymentMethod,
-        status: "completed",
-        updatedAt: new Date(),
-        completedAt: new Date(),
-      }).where(eq(orders.id, input.orderId));
+      const order = ORDERS.find(o => o.id === input.orderId);
+      if (order) {
+        order.paymentStatus = "paid";
+        order.paymentMethod = input.paymentMethod;
+        order.status = "completed";
+        order.updatedAt = new Date();
+        order.completedAt = new Date();
+      }
       return { success: true };
     }),
 });
