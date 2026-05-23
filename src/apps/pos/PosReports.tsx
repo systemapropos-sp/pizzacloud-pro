@@ -1,19 +1,19 @@
-import { trpc } from "@/providers/trpc";
+import { useDashboardStats, useSalesByDay, usePopularItems } from "@/hooks/useStaticQueries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, ShoppingCart, TrendingUp } from "lucide-react";
+import { DollarSign, ShoppingCart, TrendingUp, Award } from "lucide-react";
 
 export default function PosReports() {
-  const { data: stats } = trpc.analytics.dashboard.useQuery();
-  const { data: salesByDay } = trpc.analytics.salesByDay.useQuery({ days: 7 });
-  const { data: popularItems } = trpc.analytics.popularItems.useQuery({ limit: 5 });
+  const { data: stats } = useDashboardStats();
+  const { data: salesByDay } = useSalesByDay(7);
+  const { data: popularItems } = usePopularItems(5);
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <h2 className="text-xl font-bold mb-4">POS Reports</h2>
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center"><DollarSign className="w-5 h-5 text-green-600" /></div><div><p className="text-2xl font-bold">${stats?.todayRevenue.toFixed(2) ?? "0"}</p><p className="text-xs text-gray-500">Today's Revenue</p></div></div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center"><DollarSign className="w-5 h-5 text-green-600" /></div><div><p className="text-2xl font-bold">${stats?.todayRevenue.toFixed(2) ?? "0.00"}</p><p className="text-xs text-gray-500">Today's Revenue</p></div></div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center"><ShoppingCart className="w-5 h-5 text-blue-600" /></div><div><p className="text-2xl font-bold">{stats?.todayOrders ?? 0}</p><p className="text-xs text-gray-500">Today's Orders</p></div></div></CardContent></Card>
-        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center"><TrendingUp className="w-5 h-5 text-amber-600" /></div><div><p className="text-2xl font-bold">${stats?.weekRevenue.toFixed(2) ?? "0"}</p><p className="text-xs text-gray-500">Week Revenue</p></div></div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center"><TrendingUp className="w-5 h-5 text-amber-600" /></div><div><p className="text-2xl font-bold">${stats?.weekRevenue.toFixed(2) ?? "0.00"}</p><p className="text-xs text-gray-500">Week Revenue</p></div></div></CardContent></Card>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -27,11 +27,12 @@ export default function PosReports() {
                   <div className="flex items-center gap-4"><span className="text-xs text-gray-400">{day.orders} orders</span><span className="font-bold text-sm">${day.revenue.toFixed(2)}</span></div>
                 </div>
               ))}
+              {(!salesByDay || salesByDay.length === 0) && <p className="text-gray-400 text-sm">No data</p>}
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-lg">Top Selling Items</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Award className="w-5 h-5 text-amber-500" />Top Selling Items</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
               {popularItems?.map((item, idx) => (
@@ -40,6 +41,7 @@ export default function PosReports() {
                   <div className="flex items-center gap-4"><span className="text-xs text-gray-400">{item.count} sold</span><span className="font-bold text-sm">${item.revenue.toFixed(2)}</span></div>
                 </div>
               ))}
+              {(!popularItems || popularItems.length === 0) && <p className="text-gray-400 text-sm">No data</p>}
             </div>
           </CardContent>
         </Card>

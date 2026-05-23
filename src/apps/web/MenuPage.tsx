@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
-import { trpc } from "@/providers/trpc";
+import { useMenuCategories, useMenuItems, usePopularMenuItems } from "@/hooks/useStaticQueries";
 import { useCartStore } from "@/store/cartStore";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -22,10 +21,9 @@ const defaultCrusts = [
 ];
 
 export default function MenuPage() {
-  const navigate = useNavigate();
-  const { data: categories } = trpc.menu.categories.useQuery();
-  const { data: menuItems } = trpc.menu.items.useQuery();
-  const { data: popular } = trpc.menu.popular.useQuery();
+  const { data: categories } = useMenuCategories();
+  const { data: menuItems } = useMenuItems();
+  const { data: popular } = usePopularMenuItems();
   const addToCart = useCartStore(s => s.addItem);
 
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
@@ -142,7 +140,6 @@ export default function MenuPage() {
           {selected?.image && <img src={selected.image} alt={selected.name} className="w-full h-44 object-cover rounded-lg" />}
           <p className="text-sm text-gray-600">{selected?.description}</p>
 
-          {/* Size */}
           <div className="space-y-2"><h4 className="font-medium text-sm">Size</h4>
             <div className="grid grid-cols-2 gap-2">{defaultSizes.map(s => (
               <button key={s.label} onClick={() => setSize(s)} className={`px-3 py-2 rounded-lg text-sm border-2 transition-colors text-left ${size.label === s.label ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200"}`}>
@@ -151,7 +148,6 @@ export default function MenuPage() {
             ))}</div>
           </div>
 
-          {/* Crust */}
           <div className="space-y-2"><h4 className="font-medium text-sm">Crust</h4>
             <div className="flex flex-wrap gap-2">{defaultCrusts.map(c => (
               <button key={c.label} onClick={() => setCrust(c)} className={`px-4 py-2 rounded-lg text-sm border-2 transition-colors ${crust.label === c.label ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200"}`}>
@@ -160,7 +156,6 @@ export default function MenuPage() {
             ))}</div>
           </div>
 
-          {/* Toppings */}
           {selected?.toppings && selected.toppings.length > 0 && (
             <div className="space-y-2"><h4 className="font-medium text-sm">Extra Toppings</h4>
               <div className="flex flex-wrap gap-2">{selected.toppings.map((t: any) => {

@@ -1,13 +1,13 @@
-import { trpc } from "@/providers/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useDashboardStats, useSalesByDay, usePopularItems, useMenuItems, useStaff } from "@/hooks/useStaticQueries";
 import { Building2, DollarSign, ShoppingCart, TrendingUp, Pizza } from "lucide-react";
 
 export default function DashboardPage() {
-  const { data: analytics } = trpc.analytics.dashboard.useQuery();
-  const { data: salesByDay } = trpc.analytics.salesByDay.useQuery({ days: 7 });
-  const { data: popularItems } = trpc.analytics.popularItems.useQuery({ limit: 5 });
-  const { data: menuItems } = trpc.menu.items.useQuery({});
-  const { data: staff } = trpc.staff.list.useQuery({});
+  const { data: analytics } = useDashboardStats();
+  const { data: salesByDay } = useSalesByDay(7);
+  const { data: popularItems } = usePopularItems(5);
+  const { data: menuItems } = useMenuItems();
+  const { data: staff } = useStaff();
 
   return (
     <div className="p-6">
@@ -24,12 +24,14 @@ export default function DashboardPage() {
             {salesByDay?.map(day => (
               <div key={day.date} className="flex justify-between items-center"><span className="text-sm text-gray-600">{new Date(day.date).toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" })}</span><div className="flex items-center gap-3"><span className="text-xs text-gray-400">{day.orders} orders</span><span className="font-bold text-sm">${day.revenue.toFixed(2)}</span></div></div>
             ))}
+            {(!salesByDay || salesByDay.length === 0) && <p className="text-gray-400 text-sm">No data</p>}
           </div></CardContent></Card>
         <Card><CardHeader><CardTitle className="text-lg flex items-center gap-2"><Pizza className="w-5 h-5 text-red-600" />Top Selling Items</CardTitle></CardHeader>
           <CardContent><div className="space-y-2">
             {popularItems?.map((item, idx) => (
               <div key={idx} className="flex justify-between items-center"><span className="text-sm font-medium">#{idx + 1} {item.name}</span><div className="flex items-center gap-3"><span className="text-xs text-gray-400">{item.count} sold</span><span className="font-bold text-sm">${item.revenue.toFixed(2)}</span></div></div>
             ))}
+            {(!popularItems || popularItems.length === 0) && <p className="text-gray-400 text-sm">No data</p>}
           </div></CardContent></Card>
       </div>
       <Card><CardHeader><CardTitle className="text-lg">Tenant Stats</CardTitle></CardHeader>

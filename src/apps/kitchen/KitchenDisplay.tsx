@@ -1,4 +1,5 @@
-import { trpc } from "@/providers/trpc";
+import { useState, useEffect } from "react";
+import { useKitchenTickets, useKitchenStats } from "@/hooks/useStaticQueries";
 import { Clock, Flame, ChefHat, CheckCircle, Package, ArrowLeft, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router";
 
@@ -12,13 +13,25 @@ const statusConfig: Record<string, { label: string; color: string; border: strin
 
 export default function KitchenDisplay() {
   const navigate = useNavigate();
-  const { data: tickets } = trpc.kitchen.tickets.useQuery(undefined, { refetchInterval: 3000 });
-  const { data: stats } = trpc.kitchen.stats.useQuery(undefined, { refetchInterval: 3000 });
-  const utils = trpc.useUtils();
-  const updateItem = trpc.kitchen.updateItemStatus.useMutation({ onSuccess: () => utils.kitchen.tickets.invalidate() });
-  const updateOrder = trpc.kitchen.updateOrderStatus.useMutation({ onSuccess: () => utils.kitchen.tickets.invalidate() });
+  const { data: tickets } = useKitchenTickets();
+  const { data: stats } = useKitchenStats();
+  const [elapsed, setElapsed] = useState<Record<number, string>>({});
 
-  const getElapsed = (d: Date) => { const diff = Date.now() - new Date(d).getTime(); const m = Math.floor(diff / 60000), s = Math.floor((diff % 60000) / 1000); return `${m}m ${s}s`; };
+  const getElapsed = (d: Date) => {
+    const diff = Date.now() - new Date(d).getTime();
+    const m = Math.floor(diff / 60000), s = Math.floor((diff % 60000) / 1000);
+    return `${m}m ${s}s`;
+  };
+
+  // Update elapsed time every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newElapsed: Record<number, string> = {};
+      tickets?.forEach(t => { newElapsed[t.id] = getElapsed(t.createdAt); });
+      setElapsed(newElapsed);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [tickets]);
 
   return (
     <div className="min-h-screen bg-[#1a1a2e] text-white">
@@ -32,6 +45,7 @@ export default function KitchenDisplay() {
             <div className="text-center"><p className="text-2xl font-bold text-red-400">{stats?.pendingItems ?? 0}</p><p className="text-xs text-gray-400">Pending</p></div>
             <div className="text-center"><p className="text-2xl font-bold text-amber-400">{stats?.preparingItems ?? 0}</p><p className="text-xs text-gray-400">Cooking</p></div>
             <div className="text-center"><p className="text-2xl font-bold text-green-400">{stats?.readyItems ?? 0}</p><p className="text-xs text-gray-400">Ready</p></div>
+            <div className="text-center"><p className="text-2xl font-bold text-blue-400">{stats?.activeOrders ?? 0}</p><p className="text-xs text-gray-400">Active</p></div>
           </div>
         </div>
       </header>
@@ -48,33 +62,33 @@ export default function KitchenDisplay() {
                 <div key={ticket.id} className={`bg-[#0f0f23] rounded-xl border-2 ${cfg.border} overflow-hidden`}>
                   <div className={`${cfg.bg} px-4 py-3 flex items-center justify-between`}>
                     <div className="flex items-center gap-2"><Icon className={`w-5 h-5 ${cfg.color}`} /><span className={`font-bold ${cfg.color}`}>{ticket.orderNumber}</span></div>
-                    <div className="flex items-center gap-1 text-gray-400"><Clock className="w-4 h-4" /><span className="text-sm font-mono">{getElapsed(ticket.createdAt)}</span></div>
+                    <div className="flex items-center gap-1 text-gray-400"><Clock className="w-4 h-4" /><span className="text-sm font-mono">{elapsed[ticket.id] || getElapsed(ticket.createdAt)}</span></div>
                   </div>
-                  <div className="px-4 py-2 border-b border-gray-700 flex justify-between text-sm"><span className="text-gray-300">{ticket.orderType === "dineIn" ? `Table ${ticket.tableNumber}` : ticket.orderType}</span><span className="text-gray-400">{ticket.customerName || "Guest"}</span></div>
+                  <div className="px-4 py-2 border-b border-gray-700 flex justify-between text-sm">
+                    <span className="text-gray-300">{ticket.orderType === "dineIn" ? `Table ${ticket.tableNumber}` : ticket.orderType}</span>
+                    <span className="text-gray-400">{ticket.customerName || "Guest"}</span>
+                  </div>
                   <div className="p-4 space-y-2">
-                    {ticket.items.map((item: any) => (
+                    {(ticket as any).items?.map((item: any) => (
                       <div key={item.id} className="bg-white/5 rounded-lg p-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="flex items-center gap-2"><span className="font-bold">{item.quantity}x</span><span className="font-medium text-gray-200">{item.name}</span></div>
+                            {item.selectedSize && <p className="text-xs text-gray-400 mt-0.5">{item.selectedSize.label} {item.selectedCrust ? `&middot; ${item.selectedCrust.label}` : ""}</p>}
                             {item.selectedToppings?.length > 0 && <p className="text-xs text-gray-400 mt-0.5">+{item.selectedToppings.map((t: any) => t.label).join(", ")}</p>}
                             {item.specialInstructions && <p className="text-xs text-amber-400 mt-0.5">Note: {item.specialInstructions}</p>}
                           </div>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${item.status === "pending" ? "bg-gray-700 text-gray-300" : item.status === "preparing" ? "bg-orange-900/50 text-orange-400" : "bg-green-900/50 text-green-400"}`}>{item.status}</span>
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          {item.status === "pending" && <button onClick={() => updateItem.mutate({ itemId: item.id, status: "preparing" })} className="flex-1 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg"><Flame className="w-3 h-3 inline mr-1" />Start</button>}
-                          {item.status === "preparing" && <button onClick={() => updateItem.mutate({ itemId: item.id, status: "ready" })} className="flex-1 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg"><CheckCircle className="w-3 h-3 inline mr-1" />Ready</button>}
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${item.status === "pending" ? "bg-gray-700 text-gray-300" : item.status === "preparing" || item.status === "baking" ? "bg-orange-900/50 text-orange-400" : "bg-green-900/50 text-green-400"}`}>{item.status}</span>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="px-4 pb-4">
-                    {ticket.status === "pending" && <button onClick={() => updateOrder.mutate({ orderId: ticket.id, status: "confirmed" })} className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg">Confirm</button>}
-                    {ticket.status === "confirmed" && <button onClick={() => updateOrder.mutate({ orderId: ticket.id, status: "preparing" })} className="w-full py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg">Start All</button>}
-                    {ticket.status === "preparing" && <button onClick={() => updateOrder.mutate({ orderId: ticket.id, status: "baking" })} className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg">In Oven</button>}
-                    {ticket.status === "baking" && <button onClick={() => updateOrder.mutate({ orderId: ticket.id, status: "ready" })} className="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg">Done Baking</button>}
-                    {ticket.items.every((i: any) => i.status === "ready" || i.status === "served") && <button onClick={() => updateOrder.mutate({ orderId: ticket.id, status: "completed" })} className="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg">Complete</button>}
+                  <div className="px-4 pb-4 flex gap-2">
+                    {ticket.status === "pending" && <button className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg text-sm">Confirm</button>}
+                    {ticket.status === "confirmed" && <button className="flex-1 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg text-sm">Start All</button>}
+                    {ticket.status === "preparing" && <button className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-sm">In Oven</button>}
+                    {ticket.status === "baking" && <button className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-sm">Done Baking</button>}
+                    {ticket.status === "ready" && <button className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm">Serve</button>}
                   </div>
                 </div>
               );

@@ -1,19 +1,19 @@
-import { trpc } from "@/providers/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useDashboardStats, useTodayOrders, useSalesByDay } from "@/hooks/useStaticQueries";
 import { DollarSign, ShoppingCart, Clock, AlertTriangle, Users, TrendingUp } from "lucide-react";
 
 export default function DashboardPage() {
-  const { data: stats } = trpc.analytics.dashboard.useQuery();
-  const { data: todayOrders } = trpc.order.today.useQuery();
-  const { data: salesByDay } = trpc.analytics.salesByDay.useQuery({ days: 7 });
+  const { data: stats } = useDashboardStats();
+  const { data: todayOrders } = useTodayOrders();
+  const { data: salesByDay } = useSalesByDay(7);
 
   const statCards = [
-    { label: "Today's Revenue", value: stats ? `$${stats.todayRevenue.toFixed(2)}` : "—", icon: DollarSign, color: "text-green-600", bg: "bg-green-50" },
-    { label: "Today's Orders", value: stats?.todayOrders ?? "—", icon: ShoppingCart, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Active Orders", value: stats?.activeOrders ?? "—", icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
-    { label: "Low Stock", value: stats?.lowStock ?? "—", icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
-    { label: "Total Staff", value: stats?.totalStaff ?? "—", icon: Users, color: "text-purple-600", bg: "bg-purple-50" },
-    { label: "Week Revenue", value: stats ? `$${stats.weekRevenue.toFixed(2)}` : "—", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Today's Revenue", value: stats ? `$${stats.todayRevenue.toFixed(2)}` : "$0.00", icon: DollarSign, color: "text-green-600", bg: "bg-green-50" },
+    { label: "Today's Orders", value: stats?.todayOrders ?? 0, icon: ShoppingCart, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Active Orders", value: stats?.activeOrders ?? 0, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Low Stock Items", value: stats?.lowStock ?? 0, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
+    { label: "Total Staff", value: stats?.totalStaff ?? 0, icon: Users, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "Week Revenue", value: stats ? `$${stats.weekRevenue.toFixed(2)}` : "$0.00", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
   ];
 
   return (
@@ -36,11 +36,12 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-3"><span className="text-xs text-gray-400">{day.orders} orders</span><span className="font-bold text-sm">${day.revenue.toFixed(2)}</span></div>
               </div>
             ))}
+            {(!salesByDay || salesByDay.length === 0) && <p className="text-gray-400 text-sm">No sales data yet</p>}
           </div>
         </CardContent></Card>
         <Card><CardHeader><CardTitle className="text-lg">Today's Orders</CardTitle></CardHeader><CardContent>
           <div className="space-y-3 max-h-[250px] overflow-y-auto">
-            {todayOrders?.length === 0 && <p className="text-gray-400 text-sm">No orders today</p>}
+            {(!todayOrders || todayOrders.length === 0) && <p className="text-gray-400 text-sm">No orders yet today</p>}
             {todayOrders?.slice(0, 8).map(order => (
               <div key={order.id} className="flex items-center justify-between py-2 border-b last:border-0">
                 <div><p className="font-medium text-sm">{order.orderNumber}</p><p className="text-xs text-gray-500">{order.customerName || "Guest"} &middot; {order.orderType}</p></div>
